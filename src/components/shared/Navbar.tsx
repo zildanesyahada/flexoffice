@@ -1,14 +1,19 @@
-import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { MotionConfig, motion, useMotionValueEvent, useScroll } from 'framer-motion';
 
 const navLinks = [
   { name: 'Home', path: '/' },
+  { name: 'Popular', path: '/#popular', isAnchor: true },
+  { name: 'Categories', path: '/#categories', isAnchor: true },
   { name: 'Rooms', path: '/rooms' },
-  { name: 'Featured', path: '/#featured', isAnchor: true },
   { name: 'About', path: '/about' },
   { name: 'Contact', path: '/contact' },
 ];
+
+const anchorIds = navLinks
+  .filter((l) => l.isAnchor)
+  .map((l) => l.path.split('#')[1]);
 
 const linkClass = (active: boolean) =>
   `group relative pb-1 text-sm font-medium transition-colors duration-200 ${
@@ -28,9 +33,56 @@ function Underline({ active }: { active: boolean }) {
   );
 }
 
+/**
+ * Scrollspy: mengembalikan id section terakhir yang bagian atasnya
+ * sudah melewati garis `offset` dari atas layar.
+ */
+function useScrollSpy(ids: string[], enabled: boolean, offset = 120) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      setActiveId(null);
+      return;
+    }
+
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+      let current: string | null = null;
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= offset) current = id;
+      }
+      setActiveId(current);
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [ids, enabled, offset]);
+
+  return activeId;
+}
+
 export function Navbar() {
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
+
+  const { pathname } = useLocation();
+  const isHome = pathname === '/';
+  const activeId = useScrollSpy(anchorIds, isHome);
 
   useMotionValueEvent(scrollY, 'change', (current) => {
     const previous = scrollY.getPrevious() ?? 0;
@@ -47,35 +99,58 @@ export function Navbar() {
         className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white/95 backdrop-blur"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid h-[58px] grid-cols-[1fr_auto_1fr] items-center">
+          <div className="grid h-14.5 grid-cols-[1fr_auto_1fr] items-center">
             <Link to="/" aria-label="FlexOffice home" className="justify-self-start">
-              <img className="h-8 w-auto" src="assets/images/logo.png" alt="FlexOffice Logo" />
+              <img className="h-8 w-auto" src="/assets/images/logo.png" alt="FlexOffice Logo" />
             </Link>
 
             {/* Tengah: menu */}
             <nav aria-label="Main" className="flex items-center gap-9">
-              {navLinks.map((link) =>
-                link.isAnchor ? (
-                  <a key={link.name} href={link.path} className={linkClass(false)}>
-                    {link.name}
-                    <Underline active={false} />
-                  </a>
-                ) : (
+              {navLinks.map((link) => {
+                if (link.isAnchor) {
+                  const id = link.path.split('#')[1];
+                  const active = isHome && activeId === id;
+                  return (
+                    <a
+                      key={link.name}
+                      href={link.path}
+                      aria-current={active ? 'location' : undefined}
+                      className={linkClass(active)}
+                    >
+                      {link.name}
+                      <Underline active={active} />
+                    </a>
+                  );
+                }
+
+                const isHomeLink = link.path === '/';
+
+                return (
                   <NavLink
                     key={link.name}
                     to={link.path}
-                    end={link.path === '/'}
-                    className={({ isActive }) => linkClass(isActive)}
+                    end={isHomeLink}
+                    onClick={() => {
+                      if (isHomeLink && isHome) {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                    className={({ isActive }) =>
+                      linkClass(isHomeLink ? isActive && activeId === null : isActive)
+                    }
                   >
-                    {({ isActive }) => (
-                      <>
-                        {link.name}
-                        <Underline active={isActive} />
-                      </>
-                    )}
+                    {({ isActive }) => {
+                      const active = isHomeLink ? isActive && activeId === null : isActive;
+                      return (
+                        <>
+                          {link.name}
+                          <Underline active={active} />
+                        </>
+                      );
+                    }}
                   </NavLink>
-                ),
-              )}
+                );
+              })}
             </nav>
 
             {/* Kanan: tombol akun */}

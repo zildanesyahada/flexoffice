@@ -40,6 +40,8 @@ export const roomCategories: RoomCategory[] = [
   { id: 2, name: 'Coworking Office' },
   { id: 3, name: 'Virtual Space' },
   { id: 4, name: 'Private Executive Suite Room' },
+  { id: 5, name: 'Studio ' },
+  { id: 6, name: 'Event Room ' },
 ];
 
 const facilities: Facility[] = [
@@ -51,7 +53,7 @@ const facilities: Facility[] = [
 ];
 
 // Semua ruangan memakai foto yang sama sebagai penanda. Ganti dengan foto asli per ruangan.
-const placeholderImages: RoomImage[] = [{ image_path: '/images/boardroom.jpg', sort_order: 1 }];
+const placeholderImages: RoomImage[] = [{ image_path: '/assets/images/boardroom.jpg', sort_order: 1 }];
 
 // ---------- Data ruangan ----------
 // DATA SEMENTARA: nanti diambil dari backend (GET /rooms).
